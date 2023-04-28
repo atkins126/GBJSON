@@ -2,14 +2,16 @@ unit GBJSON.Helper;
 
 interface
 
+{$IFDEF WEAKPACKAGEUNIT}
+  {$WEAKPACKAGEUNIT ON}
+{$ENDIF}
+
 uses
   System.SysUtils,
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  {$IF CompilerVersion <= 34.0}
   REST.Json,
-  {$ENDIF}
   GBJSON.DateTime.Helper,
   GBJSON.Interfaces;
 
@@ -20,93 +22,95 @@ type
     function Format: string; overload;
     {$ENDIF}
 
-    class function ObjectToJSONString(Value: TObject): string;
+    class function ObjectToJSONString(AValue: TObject): string;
+    class function FromObject(AValue: TObject): TJSONObject;
+    class function FromFile(AValue: string) : TJSONObject;
+    class function FromString(AValue: string) : TJSONObject;
+    class function Format(AValue: string): string; overload;
 
-    class function fromObject(Value: TObject): TJSONObject;
-    class function fromFile  (Value: String) : TJSONObject;
-    class function fromString(Value: String) : TJSONObject;
+    procedure SaveToFile(AFileName: string);
+    procedure ToObject(AValue: TObject; AUseIgnore: Boolean = True);
 
-    class function format(Value: string): string; overload;
+    function ValueAsString(AName: string; ADefault: string = ''): string;
+    function ValueAsInteger(AName: string; ADefault: Integer = 0): Integer;
+    function ValueAsFloat(AName: string; ADefault: Double = 0): Double;
+    function ValueAsDateTime(AName: string; AFormat: string = ''; ADefault: TDateTime = 0): TDateTime;
+    function ValueAsBoolean(AName: string; ADefault: Boolean = True): Boolean;
+    function ValueAsJSONObject(AName: string): TJSONObject;
+    function ValueAsJSONArray (AName: string): TJSONArray;
 
-    procedure SaveToFile(AFileName: String);
-    procedure toObject(Value: TObject; bUseIgnore: boolean = True);
+    function SetValue(AName: string; AValue: Boolean): TJSONObject; overload;
+    function SetValue(AName: string; AValue: Integer): TJSONObject; overload;
+    function SetValue(AName: string; AValue: Double): TJSONObject; overload;
+    function SetValue(AName, AValue: string): TJSONObject; overload;
 
-    function ValueAsString   (Name: string; Default: string = ''): string;
-    function ValueAsInteger  (Name: string; Default: Integer = 0): Integer;
-    function ValueAsFloat    (Name: string; Default: Double = 0): Double;
-    function ValueAsDateTime (Name: string; AFormat: String = ''; Default: TDateTime = 0): TDateTime;
-    function ValueAsBoolean  (Name: string; Default: Boolean = True): Boolean;
-
-    function ValueAsJSONObject(Name: String): TJSONObject;
-    function ValueAsJSONArray (Name: String): TJSONArray;
-
-    function SetValue(Name: String; Value: Boolean): TJSONObject; overload;
-    function SetValue(Name: String; Value: Integer): TJSONObject; overload;
-    function SetValue(Name: String; Value: Double): TJSONObject; overload;
-    function SetValue(Name, Value: String): TJSONObject; overload;
-
-    function Encode: String;
+    function Encode: string;
   end;
 
   TGBJSONArrayHelper = class helper for TJSONArray
   private
     {$IF CompilerVersion <= 26.0}
-    function GetItems(Index: Integer): TJSONValue;
+    function GetItems(AIndex: Integer): TJSONValue;
     {$ENDIF}
+
+    function GetFields: TList<string>;
   public
     {$IF CompilerVersion <= 26.0}
     function Count: Integer;
     property Items[Index: Integer]: TJSONValue read GetItems;
     {$ENDIF}
 
-    function Encode: String;
+    function Encode: string;
+    procedure ToCsvFile(AFileName: string; ASeparator: string); overload;
+    class procedure ToCsvFile(AJSONContent: string; AFileName: string; ASeparator: string); overload;
+    function ToCsv(ASeparator: string = ';'): string; overload;
+    class function ToCsv(AJSONContent: string; ASeparator: string): string; overload;
 
-    function ItemAsString(Index: Integer; Name: string; Default: string = ''): string;
-    function ItemAsInteger(Index: Integer; Name: string; Default: Integer = 0): Integer;
-    function ItemAsFloat  (Index: Integer; Name: string; Default: Double = 0): Double;
-    function ItemAsDateTime(Index: Integer; Name: string; AFormat: String = ''; Default: TDateTime = 0): TDateTime;
-    function ItemAsBoolean(Index: Integer; Name: string; Default: Boolean = True): Boolean;
+    function ItemAsString(AIndex: Integer; AName: string; ADefault: string = ''): string;
+    function ItemAsInteger(AIndex: Integer; AName: string; ADefault: Integer = 0): Integer;
+    function ItemAsFloat(AIndex: Integer; AName: string; ADefault: Double = 0): Double;
+    function ItemAsDateTime(AIndex: Integer; AName: string; AFormat: string = ''; Default: TDateTime = 0): TDateTime;
+    function ItemAsBoolean(AIndex: Integer; AName: string; ADefault: Boolean = True): Boolean;
 
-    function ItemAsJSONObject(Index: Integer): TJSONObject; overload;
-    function ItemAsJSONObject(Index: Integer; Name: String): TJSONObject; overload;
-    function ItemAsJSONArray(Index: Integer): TJSONArray; overload;
-    function ItemAsJSONArray(Index: Integer; Name: String): TJSONArray; overload;
-    class function FromString(Value: String): TJSONArray;
+    function ItemAsJSONObject(AIndex: Integer): TJSONObject; overload;
+    function ItemAsJSONObject(AIndex: Integer; AName: string): TJSONObject; overload;
+    function ItemAsJSONArray(AIndex: Integer): TJSONArray; overload;
+    function ItemAsJSONArray(AIndex: Integer; AName: string): TJSONArray; overload;
+    class function FromString(AValue: string): TJSONArray;
   end;
 
   TObjectHelper = class helper for TObject
-    public
-      function ToJSONObject: TJSONObject;
-      function ToJSONString(bFormat: Boolean = False): string;
-      procedure SaveToJSONFile(AFileName: String);
-
-      procedure fromJSONObject(Value: TJSONObject);
-      procedure fromJSONString(Value: String);
-  end;
+  public
+    function ToJSONObject: TJSONObject;
+    function ToJSONString(AFormat: Boolean = False): string;
+    procedure SaveToJSONFile(AFileName: string);
+    procedure FromJSONObject(AValue: TJSONObject);
+    procedure FromJSONString(AValue: string);
+end;
 
 implementation
 
 { TGBJSONObjectHelper }
 
-function TGBJSONObjectHelper.Encode: String;
+function TGBJSONObjectHelper.Encode: string;
 begin
   {$IF CompilerVersion > 26}
-  result := TJson.JsonEncode(Self);
+  Result := TJson.JsonEncode(Self);
   {$ELSE}
-  result := Self.ToString;
+  Result := Self.ToString;
   {$ENDIF}
 end;
 
-class function TGBJSONObjectHelper.format(Value: string): string;
+class function TGBJSONObjectHelper.Format(AValue: string): string;
 var
-  jsonObject: TJSONObject;
+  LJsonObject: TJSONObject;
 begin
-  result     := EmptyStr;
-  jsonObject := fromString(Value);
+  Result := EmptyStr;
+  LJsonObject := fromString(AValue);
   try
-    result := jsonObject.Format;
+    Result := LJsonObject.Format;
   finally
-    jsonObject.Free;
+    LJsonObject.Free;
   end;
 end;
 
@@ -117,183 +121,183 @@ begin
 end;
 {$ENDIF}
 
-class function TGBJSONObjectHelper.fromFile(Value: String): TJSONObject;
+class function TGBJSONObjectHelper.FromFile(AValue: string) : TJSONObject;
 var
-  fileJSON: TStringList;
+  LFileJSON: TStringList;
 begin
-  if not FileExists(Value) then
-    raise EFileNotFoundException.CreateFmt('File %s not found.', [Value]);
+  if not FileExists(AValue) then
+    raise EFileNotFoundException.CreateFmt('File %s not found.', [AValue]);
 
-  fileJSON := TStringList.Create;
+  LFileJSON := TStringList.Create;
   try
-    fileJSON.LoadFromFile(Value);
-    result := fromString(fileJSON.Text);
+    LFileJSON.LoadFromFile(AValue);
+    Result := fromString(LFileJSON.Text);
   finally
-    fileJSON.Free;
+    LFileJSON.Free;
   end;
 end;
 
-class function TGBJSONObjectHelper.fromObject(Value: TObject): TJSONObject;
+class function TGBJSONObjectHelper.FromObject(AValue: TObject): TJSONObject;
 begin
-  result := TGBJSONDefault.Deserializer.ObjectToJsonObject(Value);
+  Result := TGBJSONDefault.Deserializer.ObjectToJsonObject(AValue);
 end;
 
-class function TGBJSONObjectHelper.fromString(Value: String): TJSONObject;
+class function TGBJSONObjectHelper.fromString(AValue: string) : TJSONObject;
 begin
-  result := TGBJSONDefault.Deserializer.StringToJsonObject(Value);
+  Result := TGBJSONDefault.Deserializer.StringToJsonObject(AValue);
 end;
 
-class function TGBJSONObjectHelper.ObjectToJSONString(Value: TObject): string;
+class function TGBJSONObjectHelper.ObjectToJSONString(AValue: TObject): string;
 begin
-  result := TGBJSONDefault.Deserializer.ObjectToJsonString(Value);
+  Result := TGBJSONDefault.Deserializer.ObjectToJsonString(AValue);
 end;
 
-procedure TGBJSONObjectHelper.SaveToFile(AFileName: String);
+procedure TGBJSONObjectHelper.SaveToFile(AFileName: string);
 var
-  fileJSON: TStringList;
+  LFileJSON: TStringList;
 begin
-  fileJSON := TStringList.Create;
+  LFileJSON := TStringList.Create;
   try
-    fileJSON.Text := Self.Format;
-    fileJSON.SaveToFile(AFileName);
+    LFileJSON.Text := Self.Format;
+    LFileJSON.SaveToFile(AFileName);
   finally
-    fileJSON.Free;
+    LFileJSON.Free;
   end;
 end;
 
-function TGBJSONObjectHelper.SetValue(Name: String; Value: Boolean): TJSONObject;
+function TGBJSONObjectHelper.SetValue(AName: string; AValue: Boolean): TJSONObject;
 begin
-  result := Self;
-  if Value then
-    Self.AddPair(Name, TJSONTrue.Create)
+  Result := Self;
+  if AValue then
+    Self.AddPair(AName, TJSONTrue.Create)
   else
-    Self.AddPair(Name, TJSONFalse.Create)
+    Self.AddPair(AName, TJSONFalse.Create)
 end;
 
-function TGBJSONObjectHelper.SetValue(Name: String; Value: Integer): TJSONObject;
+function TGBJSONObjectHelper.SetValue(AName: string; AValue: Integer): TJSONObject;
 begin
-  result := Self;
-  Self.AddPair(Name, TJSONNumber.Create(Value));
+  Result := Self;
+  Self.AddPair(AName, TJSONNumber.Create(AValue));
 end;
 
-function TGBJSONObjectHelper.SetValue(Name: String; Value: Double): TJSONObject;
+function TGBJSONObjectHelper.SetValue(AName: string; AValue: Double): TJSONObject;
 begin
-  result := Self;
-  Self.AddPair(Name, TJSONNumber.Create(Value));
+  Result := Self;
+  Self.AddPair(AName, TJSONNumber.Create(AValue));
 end;
 
-function TGBJSONObjectHelper.SetValue(Name, Value: String): TJSONObject;
+function TGBJSONObjectHelper.SetValue(AName, AValue: string): TJSONObject;
 begin
-  result := Self;
-  Self.AddPair(Name, TJSONString.Create(Value));
+  Result := Self;
+  Self.AddPair(AName, TJSONString.Create(AValue));
 end;
 
-procedure TGBJSONObjectHelper.toObject(Value: TObject; bUseIgnore: boolean = True);
+procedure TGBJSONObjectHelper.ToObject(AValue: TObject; AUseIgnore: boolean = True);
 begin
-  TGBJSONDefault.Serializer(bUseIgnore).JsonObjectToObject(Value, Self);
+  TGBJSONDefault.Serializer(AUseIgnore).JsonObjectToObject(AValue, Self);
 end;
 
-function TGBJSONObjectHelper.ValueAsBoolean(Name: string; Default: Boolean): Boolean;
+function TGBJSONObjectHelper.ValueAsBoolean(AName: string; ADefault: Boolean): Boolean;
 var
-  strValue: string;
+  LStrValue: string;
 begin
-  result := Default;
-  if GetValue(Name) <> nil then
+  Result := ADefault;
+  if GetValue(AName) <> nil then
   begin
-    strValue := GetValue(Name).ToString;
-    result := not strValue.Equals('false');
+    LStrValue := GetValue(AName).ToString;
+    Result := not LStrValue.Equals('false');
   end;
 end;
 
-function TGBJSONObjectHelper.ValueAsDateTime(Name, AFormat: String; Default: TDateTime): TDateTime;
+function TGBJSONObjectHelper.ValueAsDateTime(AName, AFormat: string; ADefault: TDateTime): TDateTime;
 var
-  strValue: string;
+  LStrValue: string;
 begin
-  result := Default;
-  strValue := ValueAsString(Name, '0');
-  result.fromIso8601ToDateTime(strValue);
+  Result := ADefault;
+  LStrValue := ValueAsString(AName, '0');
+  Result.fromIso8601ToDateTime(LStrValue);
 end;
 
-function TGBJSONObjectHelper.ValueAsFloat(Name: string; Default: Double): Double;
+function TGBJSONObjectHelper.ValueAsFloat(AName: string; ADefault: Double): Double;
 var
-  strValue: string;
+  LStrValue: string;
 begin
-  strValue := ValueAsString(Name, Default.ToString);
-  result := StrToFloatDef(strValue, Default);
+  LStrValue := ValueAsString(AName, ADefault.ToString);
+  Result := StrToFloatDef(LStrValue, ADefault);
 end;
 
-function TGBJSONObjectHelper.ValueAsInteger(Name: string; Default: Integer): Integer;
+function TGBJSONObjectHelper.ValueAsInteger(AName: string; ADefault: Integer): Integer;
 var
-  strValue: string;
+  LStrValue: string;
 begin
-  strValue := ValueAsString(Name, default.ToString);
-  result := StrToIntDef(strValue, Default);
+  LStrValue := ValueAsString(AName, ADefault.ToString);
+  Result := StrToIntDef(LStrValue, ADefault);
 end;
 
-function TGBJSONObjectHelper.ValueAsJSONArray(Name: String): TJSONArray;
+function TGBJSONObjectHelper.ValueAsJSONArray(AName: string): TJSONArray;
 begin
-  result := nil;
-  if GetValue(Name) is TJSONArray then
-    result := TJSONArray( GetValue(Name) );
+  Result := nil;
+  if GetValue(AName) is TJSONArray then
+    Result := TJSONArray(GetValue(AName));
 end;
 
-function TGBJSONObjectHelper.ValueAsJSONObject(Name: String): TJSONObject;
+function TGBJSONObjectHelper.ValueAsJSONObject(AName: string): TJSONObject;
 begin
-  result := nil;
-  if GetValue(Name) is TJSONObject then
-    result := TJSONObject( GetValue(Name) );
+  Result := nil;
+  if GetValue(AName) is TJSONObject then
+    Result := TJSONObject(GetValue(AName));
 end;
 
-function TGBJSONObjectHelper.ValueAsString(Name, Default: string): string;
+function TGBJSONObjectHelper.ValueAsString(AName, ADefault: string): string;
 begin
-  result := Default;
-  if GetValue(Name) <> nil then
-    result := GetValue(Name).Value;
+  Result := ADefault;
+  if GetValue(AName) <> nil then
+    Result := GetValue(AName).Value;
 end;
 
 { TObjectHelper }
 
-procedure TObjectHelper.fromJSONObject(Value: TJSONObject);
+procedure TObjectHelper.FromJSONObject(AValue: TJSONObject);
 begin
-  if Assigned(Value) then
-    Value.toObject(Self);
+  if Assigned(AValue) then
+    AValue.ToObject(Self);
 end;
 
-procedure TObjectHelper.fromJSONString(Value: String);
+procedure TObjectHelper.FromJSONString(AValue: string);
 var
-  json : TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := TJSONObject.fromString(Value);
+  LJSON := TJSONObject.fromString(AValue);
   try
-    if Assigned(json) then
-      fromJSONObject(json);
+    if Assigned(LJSON) then
+      fromJSONObject(LJSON);
   finally
-    json.Free;
+    LJSON.Free;
   end;
 end;
 
-procedure TObjectHelper.SaveToJSONFile(AFileName: String);
+procedure TObjectHelper.SaveToJSONFile(AFileName: string);
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := Self.ToJSONObject;
+  LJSON := Self.ToJSONObject;
   try
-    json.SaveToFile(AFileName);
+    LJSON.SaveToFile(AFileName);
   finally
-    json.Free;
+    LJSON.Free;
   end;
 end;
 
 function TObjectHelper.ToJSONObject: TJSONObject;
 begin
-  result := TJSONObject.fromObject(Self);
+  Result := TJSONObject.FromObject(Self);
 end;
 
-function TObjectHelper.ToJSONString(bFormat: Boolean): string;
+function TObjectHelper.ToJSONString(AFormat: Boolean): string;
 begin
-  result := TJSONObject.ObjectToJSONString(Self);
-  if bFormat then
-    result := TJSONObject.format(result);
+  Result := TJSONObject.ObjectToJSONString(Self);
+  if AFormat then
+    Result := TJSONObject.format(Result);
 end;
 
 { TGBJSONArrayHelper }
@@ -301,99 +305,203 @@ end;
 {$IF CompilerVersion <= 26.0}
 function TGBJSONArrayHelper.Count: Integer;
 begin
-  result := Self.Size;
+  Result := Self.Size;
 end;
 {$ENDIF}
 
-function TGBJSONArrayHelper.Encode: String;
+function TGBJSONArrayHelper.Encode: string;
 begin
   {$IF CompilerVersion > 26}
-  result := TJson.JsonEncode(Self);
+  Result := TJson.JsonEncode(Self);
   {$ELSE}
-  result := Self.ToString;
+  Result := Self.ToString;
   {$ENDIF}
 end;
 
-class function TGBJSONArrayHelper.FromString(Value: String): TJSONArray;
+class function TGBJSONArrayHelper.FromString(AValue: string): TJSONArray;
 begin
-  result := TJSONObject.ParseJSONValue(Value) as TJSONArray;
+  Result := TJSONObject.ParseJSONValue(AValue) as TJSONArray;
+end;
+
+function TGBJSONArrayHelper.GetFields: TList<string>;
+var
+  I, J: Integer;
+  LJSON: TJSONObject;
+  LName: string;
+begin
+  Result := TList<string>.create;
+  try
+    for I := 0 to Pred(Self.Count) do
+    begin
+      LJSON := Self.ItemAsJSONObject(I);
+      for J := 0 to Pred(LJSON.Count) do
+      begin
+        LName := LJSON.Pairs[J].JsonString.Value;
+        if (not Result.Contains(LName)) and
+           (not (LJSON.GetValue(LName) is TJSONObject)) and
+           (not (LJSON.GetValue(LName) is TJSONArray))
+        then
+          Result.Add(LName);
+      end;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 {$IF CompilerVersion <= 26.0}
-function TADRIFoodHelperJSONArray.GetItems(Index: Integer): TJSONValue;
+function TADRIFoodHelperJSONArray.GetItems(AIndex: Integer): TJSONValue;
 begin
   {$IF CompilerVersion > 26.0}
-  result := Self.Items[Index];
+  Result := Self.Items[AIndex];
   {$ELSE}
-  result := Self.Get(Index);
+  Result := Self.Get(AIndex);
   {$ENDIF}
 end;
 {$ENDIF}
 
-function TGBJSONArrayHelper.ItemAsBoolean(Index: Integer; Name: string; Default: Boolean): Boolean;
+function TGBJSONArrayHelper.ItemAsBoolean(AIndex: Integer; AName: string; ADefault: Boolean): Boolean;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsBoolean(Name, Default);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsBoolean(AName, ADefault);
 end;
 
-function TGBJSONArrayHelper.ItemAsDateTime(Index: Integer; Name, AFormat: String; Default: TDateTime): TDateTime;
+function TGBJSONArrayHelper.ItemAsDateTime(AIndex: Integer; AName, AFormat: string; Default: TDateTime): TDateTime;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsDateTime(Name, AFormat, Default);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsDateTime(AName, AFormat, Default);
 end;
 
-function TGBJSONArrayHelper.ItemAsFloat(Index: Integer; Name: string; Default: Double): Double;
+function TGBJSONArrayHelper.ItemAsFloat(AIndex: Integer; AName: string; ADefault: Double): Double;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsFloat(Name, Default);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsFloat(AName, ADefault);
 end;
 
-function TGBJSONArrayHelper.ItemAsInteger(Index: Integer; Name: string; Default: Integer): Integer;
+function TGBJSONArrayHelper.ItemAsInteger(AIndex: Integer; AName: string; ADefault: Integer): Integer;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsInteger(Name, Default);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsInteger(AName, ADefault);
 end;
 
-function TGBJSONArrayHelper.ItemAsJSONArray(Index: Integer): TJSONArray;
+function TGBJSONArrayHelper.ItemAsJSONArray(AIndex: Integer): TJSONArray;
 begin
-  result := {$IF CompilerVersion > 26.0} Items[Index] as TJSONArray; {$ELSE} Self.Get(Index) as TJSONArray; {$ENDIF}
+  Result := {$IF CompilerVersion > 26.0} Items[AIndex] as TJSONArray; {$ELSE} Self.Get(AIndex) as TJSONArray; {$ENDIF}
 end;
 
-function TGBJSONArrayHelper.ItemAsJSONArray(Index: Integer; Name: String): TJSONArray;
+function TGBJSONArrayHelper.ItemAsJSONArray(AIndex: Integer; AName: string): TJSONArray;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsJSONArray(Name);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsJSONArray(AName);
 end;
 
-function TGBJSONArrayHelper.ItemAsJSONObject(Index: Integer; Name: String): TJSONObject;
+function TGBJSONArrayHelper.ItemAsJSONObject(AIndex: Integer; AName: string): TJSONObject;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsJSONObject(Name);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsJSONObject(AName);
 end;
 
-function TGBJSONArrayHelper.ItemAsJSONObject(Index: Integer): TJSONObject;
+function TGBJSONArrayHelper.ItemAsJSONObject(AIndex: Integer): TJSONObject;
 begin
-  result := {$IF CompilerVersion > 26.0} Items[Index] as TJSONObject; {$ELSE} Self.Get(Index) as TJSONObject; {$ENDIF}
+  Result := {$IF CompilerVersion > 26.0} Items[AIndex] as TJSONObject; {$ELSE} Self.Get(AIndex) as TJSONObject; {$ENDIF}
 end;
 
-function TGBJSONArrayHelper.ItemAsString(Index: Integer; Name, Default: string): string;
+function TGBJSONArrayHelper.ItemAsString(AIndex: Integer; AName, ADefault: string): string;
 var
-  json: TJSONObject;
+  LJSON: TJSONObject;
 begin
-  json := ItemAsJSONObject(Index);
-  result := json.ValueAsString(Name, Default);
+  LJSON := ItemAsJSONObject(AIndex);
+  Result := LJSON.ValueAsString(AName, ADefault);
+end;
+
+class function TGBJSONArrayHelper.ToCsv(AJSONContent: string; ASeparator: string): string;
+var
+  LJSONArray: TJSONArray;
+begin
+  LJSONArray := Self.FromString(AJSONContent);
+  try
+    Result := LJSONArray.ToCsv(ASeparator);
+  finally
+    LJSONArray.Free;
+  end;
+end;
+
+class procedure TGBJSONArrayHelper.ToCsvFile(AJSONContent, AFileName: string; ASeparator: string);
+var
+  LJSONArray: TJSONArray;
+begin
+  LJSONArray := FromString(AJSONContent);
+  try
+    LJSONArray.ToCsvFile(AFileName, ASeparator);
+  finally
+    LJSONArray.Free;
+  end;
+end;
+
+procedure TGBJSONArrayHelper.ToCsvFile(AFileName: string; ASeparator: string);
+begin
+  with TStringList.Create do
+  try
+    Text := Self.ToCsv(ASeparator);
+    SaveToFile(AFileName);
+  finally
+    Free;
+  end;
+end;
+
+function TGBJSONArrayHelper.ToCsv(ASeparator: string = ';'): string;
+var
+  LFields: TList<string>;
+  LCsv: TStrings;
+  LLine: string;
+  I, J: Integer;
+begin
+  LFields := GetFields;
+  try
+    LCsv := TStringList.Create;
+    try
+      for I := 0 to Pred(LFields.Count) do
+      begin
+        if I = 0 then
+          LLine := '"' + LFields[I] + '"'
+        else
+          LLine := LLine + ASeparator + '"' + LFields[I] + '"';
+      end;
+
+      LCsv.Add(LLine);
+      for I := 0 to Pred(Self.Count) do
+      begin
+        LLine := EmptyStr;
+        for J := 0 to Pred(LFields.Count) do
+        begin
+          if J = 0 then
+            LLine := '"' + Self.ItemAsString(I, LFields[J]) + '"'
+          else
+            LLine := LLine + ASeparator + '"' + Self.ItemAsString(I, LFields[J]) + '"';
+        end;
+        LCsv.Add(LLine);
+      end;
+
+      Result := LCsv.Text;
+    finally
+      LCsv.Free;
+    end;
+  finally
+    LFields.Free;
+  end;
 end;
 
 end.
